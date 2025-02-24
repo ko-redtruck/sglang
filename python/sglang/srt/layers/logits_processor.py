@@ -172,24 +172,16 @@ class LogitsProcessor(nn.Module):
             logits[sample_indices] if sample_indices is not None else logits
         )
 
-        if (
-            not logits_metadata.extend_return_logprob
-            or logits_metadata.capture_hidden_mode.need_capture()
-        ):
-            # Decode mode or extend mode without return_logprob.
-            return LogitsProcessorOutput(
-                next_token_logits=sampled_logits,
-                hidden_states=(
-                    hidden_states
-                    if logits_metadata.capture_hidden_mode.is_full()
-                    else (
-                        pruned_states
-                        if logits_metadata.capture_hidden_mode.is_last()
-                        else None
-                    )
-                ),
-            )
+        # Compute hidden states if requested
+        if logits_metadata.capture_hidden_mode.is_full():
+            hidden_states_output = hidden_states
+        elif logits_metadata.capture_hidden_mode.is_last():
+            hidden_states_output = pruned_states
         else:
+            hidden_states_output = None
+
+        # Compute logprobs if requested, independently of hidden states
+        if logits_metadata.extend_return_logprob:
             input_logprobs = logits
             del hidden_states, logits
 
@@ -198,7 +190,6 @@ class LogitsProcessor(nn.Module):
                 input_logprobs, logits_metadata
             )
 
-            # Get the logprob of top-k tokens
             if logits_metadata.extend_return_top_logprob:
                 (
                     input_top_logprobs_val,
@@ -219,11 +210,16 @@ class LogitsProcessor(nn.Module):
 
             return LogitsProcessorOutput(
                 next_token_logits=sampled_logits,
+                hidden_states=hidden_states_output,
                 input_token_logprobs=input_token_logprobs,
                 input_top_logprobs_val=input_top_logprobs_val,
                 input_top_logprobs_idx=input_top_logprobs_idx,
             )
-
+        else:
+            return LogitsProcessorOutput(
+                next_token_logits=sampled_logits,
+                hidden_states=hidden_states_output,
+            )
     def _get_logits(
         self,
         hidden_states: torch.Tensor,
