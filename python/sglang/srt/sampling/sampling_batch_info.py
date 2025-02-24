@@ -37,8 +37,7 @@ class SamplingBatchInfo:
     # Whether any request has custom logit processor
     has_custom_logit_processor: bool
 
-    prompt_token_ids: List[List[int]]  # Prompt token IDs for each request
-    output_token_ids: List[List[int]]  # Decoded token IDs for each request
+    
 
     # Bias Tensors
     vocab_size: int
@@ -47,6 +46,9 @@ class SamplingBatchInfo:
     logit_bias: torch.Tensor = None
     vocab_mask: Optional[torch.Tensor] = None
     apply_mask: Optional[Callable[[torch.Tensor, torch.Tensor], None]] = None
+
+    prompt_token_ids: Optional[List[List[int]]] = None # Prompt token IDs for each request
+    output_token_ids: Optional[List[List[int]]] = None # Decoded token IDs for each request
 
     # Penalizer
     penalizer_orchestrator: Optional[penaltylib.BatchedPenalizerOrchestrator] = None
