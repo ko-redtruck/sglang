@@ -37,6 +37,9 @@ class SamplingBatchInfo:
     # Whether any request has custom logit processor
     has_custom_logit_processor: bool
 
+    prompt_token_ids: List[List[int]]  # Prompt token IDs for each request
+    output_token_ids: List[List[int]]  # Decoded token IDs for each request
+
     # Bias Tensors
     vocab_size: int
     grammars: Optional[List] = None
@@ -49,6 +52,8 @@ class SamplingBatchInfo:
     penalizer_orchestrator: Optional[penaltylib.BatchedPenalizerOrchestrator] = None
     linear_penalties: Optional[torch.Tensor] = None
     scaling_penalties: Optional[torch.Tensor] = None
+
+    
 
     # Device
     device: str = "cuda"
@@ -132,6 +137,9 @@ class SamplingBatchInfo:
             custom_logit_processor=merged_custom_logit_processor,
         )
         # TODO (lianmin): `need_min_p_sampling` needs to be updated in filter and merge.
+        
+        ret.prompt_token_ids = [list(r.origin_input_ids) for r in batch.reqs]
+        ret.output_token_ids = [r.output_ids for r in batch.reqs]
 
         if enable_overlap_schedule:
             # TODO (lianmin): Some penalizers such as frequency and presence depend on model outputs,
@@ -229,6 +237,8 @@ class SamplingBatchInfo:
 
     def filter_batch(self, unfinished_indices: List[int], new_indices: torch.Tensor):
         self.penalizer_orchestrator.filter(unfinished_indices, new_indices)
+        self.prompt_token_ids = [self.prompt_token_ids[i] for i in unfinished_indices]
+        self.output_token_ids = [self.output_token_ids[i] for i in unfinished_indices]
         if self.has_custom_logit_processor:
             self._filter_batch_custom_logit_processor(unfinished_indices, new_indices)
 
@@ -336,6 +346,10 @@ class SamplingBatchInfo:
         self.logit_bias = SamplingBatchInfo.merge_bias_tensor(
             self.logit_bias, other.logit_bias, len(self), len(other), self.device
         )
+
+        self.prompt_token_ids.extend(other.prompt_token_ids)
+        self.output_token_ids.extend(other.output_token_ids)
+        
         # Merge the custom logit processors and custom params lists
         if self.has_custom_logit_processor or other.has_custom_logit_processor:
             # Merge the custom logit processors

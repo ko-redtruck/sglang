@@ -1052,9 +1052,12 @@ class ScheduleBatch:
         if self.spec_algorithm.is_eagle():
             return
 
+        self.sampling_info.output_token_ids = [r.output_ids for r in self.reqs]
+        
         self.input_ids = self.output_ids
         self.output_ids = None
         self.sampling_info.penalizer_orchestrator.cumulate_output_tokens(self.input_ids)
+        
 
         # Alloc mem
         bs = len(self.reqs)

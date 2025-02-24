@@ -18,12 +18,12 @@ def _cache_from_str(json_str: str):
 
 class CustomLogitProcessor(ABC):
     """Abstract base class for callable functions."""
-
     @abstractmethod
     def __call__(
         self,
         logits: torch.Tensor,
         custom_param_list: Optional[List[Dict[str, Any]]] = None,
+        prompt_token_ids=None, output_token_ids=None
     ) -> torch.Tensor:
         """Define the callable behavior."""
         raise NotImplementedError
